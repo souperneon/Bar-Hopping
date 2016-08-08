@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Barhoppin'</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://mapzen.com/js/mapzen.css">
+  <script src="https://mapzen.com/js/mapzen.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+</head>
+<style>
+  #map {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+  }
+  html,body{margin: 0; padding: 0}
+</style>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.Mapzen.map('map', {
+        center: [47.6062,-122.3321],
+        zoom: 14,
+        scene: L.Mapzen.HouseStyles.RefillMoreLabels
+    });
+    var geocoder = L.Mapzen.geocoder('search-onM4g8D', {
+      layers: ['venue', 'address'],
+      placeholder: 'Search for a venue or address'
+    });
+    geocoder.addTo(map);
+    //search result event
+    geocoder.on('select', function (e) {
+      onMapClick(e);
+      // addLog(e.feature.properties.label + e.latlng.lat + e.latlng.lng);
+    });
+    // current location thing
+    var locator = L.Mapzen.locator();
+    locator.setPosition('bottomright');
+    locator.addTo(map);
+    //URL hash
+    L.Mapzen.hash({
+      map: map
+    });
+    //click callback
+    var geojson = null;
+    function onMapClick(e) {
+      //build url
+      var url = 'https://valhalla.dev.mapzen.com/isochrone?api_key=valhalla-t_16n1c&json=';
+      var json = {
+        locations: [{"lat":e.latlng.lat, "lon":e.latlng.lng}],
+        costing: "pedestrian",
+        walking_speed: "2.1",
+        contours: [{"time":5},{"time":10},{"time":15}]
+      };
+      url += escape(JSON.stringify(json));
+      //grab the url
+      $.getJSON(url,function(isochrones){
+        //clear this if its not null
+        if(geojson != null)
+          geojson.removeFrom(map);
+        //create the geojson object
+        geojson = L.geoJson(isochrones, { style: function(feature) {
+          return { fillColor: feature.properties.fill,
+             fillOpacity: feature.properties["fill-opacity"],
+             weight: 1,
+             color: '#FFFFFF'
+                 };
+        }});
+        //render the geojson
+        geojson.addTo(map);
+      })
+    }
+
+    //hook up the callback
+    map.on('click', onMapClick);
+  </script>
+</body>
+</html>
